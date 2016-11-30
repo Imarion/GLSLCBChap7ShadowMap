@@ -1,0 +1,68 @@
+#version 430
+
+in vec4 Position;
+in vec3 Normal;
+in vec3 SpotDirection;
+
+struct SpotLightInfo {
+    vec4  Position;  // Light position in eye coords
+    vec3  Intensity; // Light intensity
+    //vec3  Direction; // normalized direction of the spotloght
+    float Exponent;  // Angular attenuation
+    float Cutoff;    // Cutoff angle between 0 and 90.
+};
+
+uniform SpotLightInfo Spot;
+
+struct MaterialInfo {
+    vec3  Ka;        // Ambient  reflectivity
+    vec3  Kd;        // Diffuse  reflectivity
+    vec3  Ks;        // Specular reflectivity
+    float Shininess; // Specular shininess factor
+};
+
+uniform MaterialInfo Material;
+
+out vec4 FragColor;
+
+vec3 phongModelSpot ( vec4 position, vec3 normal ) {
+    vec3 s         = normalize(vec3(Spot.Position - position));
+    vec3 v         = normalize(-position.xyz); // In eyeCoords, the viewer is at the origin -> only take negation of eyeCoords vector
+    vec3 h         = normalize (v+s);
+
+    float angle    = acos(dot(-s, SpotDirection));
+    float cutoff   = radians(clamp(Spot.Cutoff, 0.0, 90.0));
+
+    vec3  ambient  = Spot.Intensity * Material.Ka;
+
+    if (angle < cutoff) {
+        float spotFactor = pow(dot(-s, SpotDirection), Spot.Exponent);
+
+        float sDotN    = max(dot(s, normal), 0.0);
+        vec3  diffuse  = Material.Kd * sDotN;
+        vec3  spec     = vec3(0.0);
+        if (sDotN > 0.0) {
+            spec = Material.Ks * pow(max(dot(h,normal), 0.0), Material.Shininess);
+        }
+
+        return ambient + spotFactor * Spot.Intensity * (diffuse + spec);
+
+    } else {
+
+        return ambient;
+
+    }
+}
+
+void main()
+{    
+    //FragColor = vec4 (1.0, 1.0, 0.0, 1.0);
+    if( gl_FrontFacing ) {
+        FragColor = vec4(phongModelSpot(Position, Normal), 1.0);
+        //FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    } else {
+        //FragColor = mix( vec4(BackColor, 1.0), vec4(1.0,0.0,0.0,1.0), 0.7 );
+        FragColor = vec4(phongModelSpot(Position, -Normal), 1.0);
+        //FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    }
+}
