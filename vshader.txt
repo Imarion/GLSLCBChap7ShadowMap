@@ -3,23 +3,22 @@
 layout (location = 0) in  vec3 VertexPosition;
 layout (location = 1) in  vec3 VertexNormal;
 
-out vec4 Position;
+out vec3 Position;
 out vec3 Normal;
-out vec3 SpotDirection;
+out vec4 ShadowCoord;
 
 uniform mat4 ModelViewMatrix;
 uniform mat3 NormalMatrix;       // Model normal matrix
 uniform mat4 MVP;                // Projection * Modelview
+uniform mat4 ShadowMatrix;
 
-uniform vec4 Worldlight;
-uniform mat3 ViewNormalMatrix;
 
 void main()
 {
     // Convert normal and position to eye coords.
     Normal        = normalize(NormalMatrix * VertexNormal);
-    Position      = ModelViewMatrix * vec4(VertexPosition, 1.0);
-    SpotDirection = normalize(ViewNormalMatrix * vec3(-Worldlight.xyz));
+    Position      = (ModelViewMatrix * vec4(VertexPosition, 1.0)).xyz;
+    ShadowCoord   = ShadowMatrix * vec4(VertexPosition,1.0);
 
     gl_Position = MVP * vec4(VertexPosition, 1.0);
 }
