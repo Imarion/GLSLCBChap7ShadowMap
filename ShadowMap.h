@@ -39,6 +39,7 @@ private slots:
 
 private:    
     void initialize();
+    void setupFBO();
     void modCurTime();
 
     void initShaders();
@@ -63,16 +64,20 @@ private:
     double currentTimeS;
     bool   mUpdateSize;
     float  tPrev, angle;
+    int    shadowMapWidth, shadowMapHeight;
 
-    GLuint mVAOTeapot, mVAOPlane, mVAOTorus, mVBO, mIBO;
+    GLuint mVAOTeapot, mVAOPlane, mVAOTorus, mVBO, mIBO, shadowFBO;
     GLuint mPositionBufferHandle, mColorBufferHandle;
     GLuint mRotationMatrixLocation;
+    GLuint pass1Index, pass2Index;
 
     Teapot   *mTeapot;
     VBOPlane *mPlane;
     Torus    *mTorus;
 
+    QVector3D worldLight;
     QMatrix4x4 ModelMatrixTeapot, ModelMatrixPlane[3], ModelMatrixTorus, ViewMatrix, ProjectionMatrix;
+    QMatrix4x4 shadowBias, LightPV, ViewMatrixLight, ProjectionMatrixLight;
 
     //debug
     void printMatrix(const QMatrix4x4& mat);

@@ -20,7 +20,7 @@ MyWindow::~MyWindow()
 }
 
 MyWindow::MyWindow()
-    : mProgram(0), currentTimeMs(0), currentTimeS(0), tPrev(0), angle(M_PI / 4.0f)
+    : mProgram(0), currentTimeMs(0), currentTimeS(0), tPrev(0), angle(M_PI / 4.0f), shadowMapWidth(512), shadowMapHeight(512)
 {
     setSurfaceType(QWindow::OpenGLSurface);
     setFlags(Qt::Window | Qt::WindowSystemMenuHint | Qt::WindowTitleHint | Qt::WindowMinMaxButtonsHint | Qt::WindowCloseButtonHint);
@@ -74,7 +74,12 @@ void MyWindow::modCurTime()
 void MyWindow::initialize()
 {
     CreateVertexBuffer();
+    setupFBO();
+
     initShaders();
+    pass1Index = mFuncs->glGetSubroutineIndex(mProgram->programId(), GL_FRAGMENT_SHADER, "recordDepth");
+    pass2Index = mFuncs->glGetSubroutineIndex(mProgram->programId(), GL_FRAGMENT_SHADER, "shadeWithShadow");
+
     initMatrices();
 
     //mRotationMatrixLocation = mProgram->uniformLocation("RotationMatrix");
@@ -82,6 +87,46 @@ void MyWindow::initialize()
     glFrontFace(GL_CCW);
     glEnable(GL_DEPTH_TEST);
 }
+
+void MyWindow::setupFBO()
+{
+    GLfloat border[] = {1.0f, 0.0f,0.0f,0.0f };
+    // The depth buffer texture
+    GLuint depthTex;
+    glGenTextures(1, &depthTex);
+    glBindTexture(GL_TEXTURE_2D, depthTex);
+    mFuncs->glTexStorage2D(GL_TEXTURE_2D, 1, GL_DEPTH_COMPONENT24, shadowMapWidth, shadowMapHeight);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_MODE, GL_COMPARE_REF_TO_TEXTURE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_COMPARE_FUNC, GL_LESS);
+
+    // Assign the depth buffer texture to texture channel 0
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, depthTex);
+
+    // Create and set up the FBO
+    glGenFramebuffers(1, &shadowFBO);
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT,
+                           GL_TEXTURE_2D, depthTex, 0);
+
+    GLenum drawBuffers[] = {GL_NONE};
+    mFuncs->glDrawBuffers(1, drawBuffers);
+
+    GLenum result = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if( result == GL_FRAMEBUFFER_COMPLETE) {
+        printf("Framebuffer is complete.\n");
+    } else {
+        printf("Framebuffer is not complete.\n");
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER,0);
+}
+
 
 void MyWindow::CreateVertexBuffer()
 {
@@ -207,6 +252,12 @@ void MyWindow::initMatrices()
     ModelMatrixPlane[2].rotate(-90.0f, QVector3D(1.0f, 0.0f, 0.0f));
 
     //ViewMatrix.lookAt(QVector3D(5.0f, 5.0f, 7.5f), QVector3D(0.0f,0.75f,0.0f), QVector3D(0.0f,1.0f,0.0f));
+
+    shadowBias = QMatrix4x4(0.5f,0.0f,0.0f,0.0f,
+                            0.0f,0.5f,0.0f,0.0f,
+                            0.0f,0.0f,0.5f,0.0f,
+                            0.5f,0.5f,0.5f,1.0f);
+
 }
 
 void MyWindow::resizeEvent(QResizeEvent *)
@@ -259,13 +310,25 @@ void MyWindow::renderScene()
     ProjectionMatrix.setToIdentity();
     ProjectionMatrix.perspective(50.0f, (float)this->width()/(float)this->height(), 0.1f, 100.0f);
 
+    worldLight = QVector3D(0.0f,c * 5.25f, c * 7.5f);
+
+    ProjectionMatrixLight.perspective(50.0f, 1.0f, 1.0f, 25.0f);
+    ViewMatrixLight.lookAt(worldLight, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f,1.0f,0.0f));
+
+    LightPV = shadowBias * ProjectionMatrixLight * ViewMatrixLight;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
+    glClear(GL_DEPTH_BUFFER_BIT);
+    glViewport(0,0,shadowMapWidth,shadowMapHeight);
+    mFuncs->glUniformSubroutinesuiv( GL_FRAGMENT_SHADER, 1, &pass1Index);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
+
     drawscene();
 }
 
 void MyWindow::drawscene()
 {
-    QVector4D worldLight = QVector4D(10.0f, 10.0f, 10.0f, 1.0f);
-
     // *** Draw teapot
     mFuncs->glBindVertexArray(mVAOTeapot);
 
@@ -280,12 +343,8 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
         mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
 
-        mProgram->setUniformValue("Spot.Position", ViewMatrix * worldLight);
-        mProgram->setUniformValue("Spot.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
-        mProgram->setUniformValue("Spot.Exponent", 30.0f );
-        mProgram->setUniformValue("Spot.Cutoff",   15.0f );
-        //mProgram->setUniformValue("Spot.direction", ViewMatrix.normalMatrix() * -worldLight.toVector3D());
-        mProgram->setUniformValue("Worldlight",     worldLight);
+        mProgram->setUniformValue("Light.Position", ViewMatrix * worldLight);
+        mProgram->setUniformValue("Light.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
         mProgram->setUniformValue("Material.Kd", 0.9f, 0.5f, 0.3f);
@@ -308,12 +367,8 @@ void MyWindow::drawscene()
 
     mProgram->bind();
     {
-        mProgram->setUniformValue("Spot.Position", ViewMatrix * worldLight);
-        mProgram->setUniformValue("Spot.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
-        mProgram->setUniformValue("Spot.Exponent", 30.0f );
-        mProgram->setUniformValue("Spot.Cutoff",   15.0f );
-        //mProgram->setUniformValue("Spot.direction", ViewMatrix.normalMatrix() * -worldLight);
-        mProgram->setUniformValue("Worldlight",       worldLight);
+        mProgram->setUniformValue("Light.Position", ViewMatrix * worldLight);
+        mProgram->setUniformValue("Light.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
         mProgram->setUniformValue("Material.Kd", 0.7f, 0.7f, 0.7f);
