@@ -359,7 +359,7 @@ void MyWindow::drawscene()
     }
     mProgram->release();
 
-    // *** Draw plane
+    // *** Draw planes
     mFuncs->glBindVertexArray(mVAOPlane);
 
     glEnableVertexAttribArray(0);

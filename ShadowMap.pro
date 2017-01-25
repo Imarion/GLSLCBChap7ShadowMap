@@ -12,14 +12,16 @@ SOURCES += main.cpp \
     ShadowMap.cpp \
     teapot.cpp \
     vboplane.cpp \
-    torus.cpp
+    torus.cpp \
+    frustum.cpp
 
 HEADERS += \
     ShadowMap.h \
     teapotdata.h \
     teapot.h \
     vboplane.h \
-    torus.h
+    torus.h \
+    frustum.h
 
 OTHER_FILES += \
     fshader.txt \
