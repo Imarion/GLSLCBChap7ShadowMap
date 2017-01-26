@@ -15,6 +15,7 @@
 #include "teapot.h"
 #include "vboplane.h"
 #include "torus.h"
+#include "frustum.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -75,7 +76,8 @@ private:
     VBOPlane *mPlane;
     Torus    *mTorus;
 
-    QVector3D worldLight;
+    QVector3D  worldLight;
+    Frustum    *lightFrustum;
     QMatrix4x4 ModelMatrixTeapot, ModelMatrixPlane[3], ModelMatrixTorus, ViewMatrix, ProjectionMatrix;
     QMatrix4x4 shadowBias, LightPV, ViewMatrixLight, ProjectionMatrixLight;
 

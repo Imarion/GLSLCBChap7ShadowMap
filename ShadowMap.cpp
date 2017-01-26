@@ -84,6 +84,13 @@ void MyWindow::initialize()
 
     //mRotationMatrixLocation = mProgram->uniformLocation("RotationMatrix");
 
+    lightFrustum = new Frustum(Projection::PERSPECTIVE);
+    float c = 1.65f;
+    QVector3D lightPos(0.0f,c * 5.25f, c * 7.5f);  // World coords
+    lightFrustum->orient( lightPos, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f,1.0f,0.0f));
+    lightFrustum->setPerspective( 50.0f, 1.0f, 1.0f, 25.0f);
+    LightPV = shadowBias * lightFrustum->getProjectionMatrix() * lightFrustum->getViewMatrix();
+
     glFrontFace(GL_CCW);
     glEnable(GL_DEPTH_TEST);
 }
@@ -264,8 +271,8 @@ void MyWindow::resizeEvent(QResizeEvent *)
 {
     mUpdateSize = true;
 
-    ProjectionMatrix.setToIdentity();
-    ProjectionMatrix.perspective(60.0f, (float)this->width()/(float)this->height(), 0.3f, 100.0f);
+//    ProjectionMatrix.setToIdentity();
+//    ProjectionMatrix.perspective(50.0f, (float)this->width()/(float)this->height(), 0.1f, 100.0f);
 }
 
 void MyWindow::render()
@@ -304,18 +311,11 @@ void MyWindow::renderScene()
 
     float c = 1.0f;
     QVector3D cameraPos(c * 11.5f * cos(angle),c * 7.0f,c * 11.5f * sin(angle));
+
+    //Pass 1 - render shadow map
     ViewMatrix.setToIdentity();
-    ViewMatrix.lookAt(cameraPos, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f,1.0f,0.0f));
-    //prog.setUniform("Light.Position", view * vec4(lightFrustum->getOrigin(),1.0f));
-    ProjectionMatrix.setToIdentity();
-    ProjectionMatrix.perspective(50.0f, (float)this->width()/(float)this->height(), 0.1f, 100.0f);
-
-    worldLight = QVector3D(0.0f,c * 5.25f, c * 7.5f);
-
-    ProjectionMatrixLight.perspective(50.0f, 1.0f, 1.0f, 25.0f);
-    ViewMatrixLight.lookAt(worldLight, QVector3D(0.0f, 0.0f, 0.0f), QVector3D(0.0f,1.0f,0.0f));
-
-    LightPV = shadowBias * ProjectionMatrixLight * ViewMatrixLight;
+    ViewMatrix = lightFrustum->getViewMatrix();
+    ProjectionMatrix = lightFrustum->getProjectionMatrix();
 
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
     glClear(GL_DEPTH_BUFFER_BIT);
@@ -325,6 +325,23 @@ void MyWindow::renderScene()
     glCullFace(GL_FRONT);
 
     drawscene();
+
+    //Pass 2 - actual render
+
+    ViewMatrix.setToIdentity();
+    ViewMatrix.lookAt(cameraPos,QVector3D(0.0f, 0.0f, 0.0f),QVector3D(0.0f,1.0f,0.0f));
+    ProjectionMatrix.setToIdentity();
+    ProjectionMatrix.perspective(50.0f, (float)this->width()/(float)this->height(), 0.1f, 100.0f);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glViewport(0,0,this->width(), this->height());
+    mFuncs->glUniformSubroutinesuiv( GL_FRAGMENT_SHADER, 1, &pass2Index);
+    glDisable(GL_CULL_FACE);
+
+    drawscene();
+
+    mContext->swapBuffers(this);
 }
 
 void MyWindow::drawscene()
@@ -343,8 +360,8 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
         mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
 
-        mProgram->setUniformValue("Light.Position", ViewMatrix * worldLight);
-        mProgram->setUniformValue("Light.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
+        mProgram->setUniformValue("Light.Position", ViewMatrix * QVector4D(lightFrustum->getOrigin(), 1.0f));
+        mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
         mProgram->setUniformValue("Material.Kd", 0.9f, 0.5f, 0.3f);
@@ -367,8 +384,8 @@ void MyWindow::drawscene()
 
     mProgram->bind();
     {
-        mProgram->setUniformValue("Light.Position", ViewMatrix * worldLight);
-        mProgram->setUniformValue("Light.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
+        mProgram->setUniformValue("Light.Position", ViewMatrix * QVector4D(lightFrustum->getOrigin(), 1.0f));
+        mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
         mProgram->setUniformValue("Material.Kd", 0.7f, 0.7f, 0.7f);
@@ -404,8 +421,8 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
         mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
 
-        mProgram->setUniformValue("Light.Position", ViewMatrix * worldLight);
-        mProgram->setUniformValue("Light.Intensity", QVector3D(0.9f, 0.9f, 0.9f));
+        mProgram->setUniformValue("Light.Position", ViewMatrix * QVector4D(lightFrustum->getOrigin(), 1.0f));
+        mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
         mProgram->setUniformValue("Material.Kd", 0.9f, 0.5f, 0.3f);
@@ -420,7 +437,6 @@ void MyWindow::drawscene()
     }
     mProgram->release();
 
-    mContext->swapBuffers(this);
 }
 
 void MyWindow::initShaders()
