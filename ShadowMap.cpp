@@ -315,6 +315,7 @@ void MyWindow::renderScene()
     //Pass 1 - render shadow map
     ViewMatrix.setToIdentity();
     ViewMatrix = lightFrustum->getViewMatrix();
+    ProjectionMatrix.setToIdentity();
     ProjectionMatrix = lightFrustum->getProjectionMatrix();
 
     glBindFramebuffer(GL_FRAMEBUFFER, shadowFBO);
@@ -346,6 +347,8 @@ void MyWindow::renderScene()
 
 void MyWindow::drawscene()
 {
+    QVector3D color(0.7f,0.5f,0.3f);
+
     // *** Draw teapot
     mFuncs->glBindVertexArray(mVAOTeapot);
 
@@ -360,14 +363,17 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
         mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
 
+        mProgram->setUniformValue("ShadowMatrix", LightPV * ModelMatrixTeapot);
+        mProgram->setUniformValue("ShadowMap", 0);
+
         mProgram->setUniformValue("Light.Position", ViewMatrix * QVector4D(lightFrustum->getOrigin(), 1.0f));
         mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
-        mProgram->setUniformValue("Material.Kd", 0.9f, 0.5f, 0.3f);
-        mProgram->setUniformValue("Material.Ks", 0.95f, 0.95f, 0.95f);
-        mProgram->setUniformValue("Material.Ka", 0.9f * 0.3f, 0.5f * 0.3f, 0.3f * 0.3f);
-        mProgram->setUniformValue("Material.Shininess", 100.0f);       
+        mProgram->setUniformValue("Material.Ka", color * 0.05f);
+        mProgram->setUniformValue("Material.Kd", color);
+        mProgram->setUniformValue("Material.Ks", 0.9f, 0.9f, 0.9f);
+        mProgram->setUniformValue("Material.Shininess", 150.0f);
 
         glDrawElements(GL_TRIANGLES, 6 * mTeapot->getnFaces(), GL_UNSIGNED_INT, ((GLubyte *)NULL + (0)));
 
@@ -388,17 +394,20 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
-        mProgram->setUniformValue("Material.Kd", 0.7f, 0.7f, 0.7f);
-        mProgram->setUniformValue("Material.Ks", 0.9f, 0.9f, 0.9f);
-        mProgram->setUniformValue("Material.Ka", 0.2f, 0.2f, 0.2f);
-        mProgram->setUniformValue("Material.Shininess", 180.0f);
+        mProgram->setUniformValue("Material.Ka", 0.05f, 0.05f, 0.05f);
+        mProgram->setUniformValue("Material.Kd", 0.25f, 0.25f, 0.25f);
+        mProgram->setUniformValue("Material.Ks", 0.0f,  0.0f,  0.0f);
+        mProgram->setUniformValue("Material.Shininess", 1.0f);
 
+        mProgram->setUniformValue("ShadowMap", 0);
         for (int i=0; i<3; i++)
         {
             QMatrix4x4 mv1 = ViewMatrix * ModelMatrixPlane[i];
             mProgram->setUniformValue("ModelViewMatrix", mv1);
             mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
             mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
+
+            mProgram->setUniformValue("ShadowMatrix", LightPV * ModelMatrixPlane[i]);
 
             glDrawElements(GL_TRIANGLES, 6 * mPlane->getnFaces(), GL_UNSIGNED_INT, ((GLubyte *)NULL + (0)));
         }
@@ -421,14 +430,17 @@ void MyWindow::drawscene()
         mProgram->setUniformValue("NormalMatrix", mv1.normalMatrix());
         mProgram->setUniformValue("MVP", ProjectionMatrix * mv1);
 
+        mProgram->setUniformValue("ShadowMatrix", LightPV * ModelMatrixTorus);
+        mProgram->setUniformValue("ShadowMap", 0);
+
         mProgram->setUniformValue("Light.Position", ViewMatrix * QVector4D(lightFrustum->getOrigin(), 1.0f));
         mProgram->setUniformValue("Light.Intensity", QVector3D(0.85f, 0.85f, 0.85f));
         mProgram->setUniformValue("ViewNormalMatrix", ViewMatrix.normalMatrix());
 
-        mProgram->setUniformValue("Material.Kd", 0.9f, 0.5f, 0.3f);
-        mProgram->setUniformValue("Material.Ks", 0.95f, 0.95f, 0.95f);
-        mProgram->setUniformValue("Material.Ka", 0.9f * 0.3f, 0.5f * 0.3f, 0.3f * 0.3f);
-        mProgram->setUniformValue("Material.Shininess", 100.0f);
+        mProgram->setUniformValue("Material.Ka", color * 0.05f);
+        mProgram->setUniformValue("Material.Kd", color);
+        mProgram->setUniformValue("Material.Ks", 0.9f, 0.9f, 0.9f);
+        mProgram->setUniformValue("Material.Shininess", 150.0f);
 
         glDrawElements(GL_TRIANGLES, 6 * mTorus->getnFaces(), GL_UNSIGNED_INT, ((GLubyte *)NULL + (0)));
 

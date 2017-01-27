@@ -59,12 +59,14 @@ void shadeWithShadow()
 
     // Gamma correct
     FragColor = pow( FragColor, vec4(1.0 / 2.2) );
+
+    //FragColor = vec4 (shadow, shadow, shadow, 1.0);
 }
 
 subroutine (RenderPassType)
 void recordDepth()
 {
-    // Do nothing, depth will be written automatically
+    // Do nothing, depth will be written automatically    
 }
 
 void main()
