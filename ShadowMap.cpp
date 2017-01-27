@@ -93,6 +93,8 @@ void MyWindow::initialize()
 
     glFrontFace(GL_CCW);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_POLYGON_OFFSET_FILL);
+    glPolygonOffset(1.0, 1.0);
 }
 
 void MyWindow::setupFBO()
@@ -260,10 +262,11 @@ void MyWindow::initMatrices()
 
     //ViewMatrix.lookAt(QVector3D(5.0f, 5.0f, 7.5f), QVector3D(0.0f,0.75f,0.0f), QVector3D(0.0f,1.0f,0.0f));
 
-    shadowBias = QMatrix4x4(0.5f,0.0f,0.0f,0.0f,
-                            0.0f,0.5f,0.0f,0.0f,
-                            0.0f,0.0f,0.5f,0.0f,
-                            0.5f,0.5f,0.5f,1.0f);
+    // ! QT matrix is in row major
+    shadowBias = QMatrix4x4(0.5f,0.0f,0.0f,0.5f,
+                            0.0f,0.5f,0.0f,0.5f,
+                            0.0f,0.0f,0.5f,0.5f,
+                            0.0f,0.0f,0.0f,1.0f);
 
 }
 

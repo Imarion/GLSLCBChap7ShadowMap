@@ -66,13 +66,10 @@ void shadeWithShadow()
 subroutine (RenderPassType)
 void recordDepth()
 {
-    // Do nothing, depth will be written automatically    
+    // Do nothing, depth will be written automatically
 }
 
 void main()
 {    
     RenderPass();
-
-    //FragColor = vec4 (1.0, 1.0, 0.0, 1.0);
-    //FragColor = vec4(phongModelDiffAndSpec(Position, Normal), 1.0);
 }

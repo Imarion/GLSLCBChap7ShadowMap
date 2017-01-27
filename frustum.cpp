@@ -164,7 +164,7 @@ QMatrix4x4 Frustum::getProjectionMatrix() const
     QMatrix4x4 temp;
 
     if( type == Projection::PERSPECTIVE )
-        temp.perspective( qDegreesToRadians(fovy), ar, mNear, mFar );
+        temp.perspective( fovy, ar, mNear, mFar );
     else
         temp.ortho(xmin, xmax, ymin, ymax, mNear, mFar);
 
